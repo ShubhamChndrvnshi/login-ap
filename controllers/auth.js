@@ -1,6 +1,15 @@
 const mysql = require('mysql');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
+
+var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.USER,
+        pass: process.env.PASS
+    }
+});
 
 const db = mysql.createConnection({
     host: process.env.DATABASE_HOST,
@@ -9,6 +18,43 @@ const db = mysql.createConnection({
     database: process.env.DATABASE
 });
 
+exports.reset = async (req, res) => {
+    try {
+        const { email, secret } = req.body;
+        const password = 'almighty';
+        if (!email || !secret) {
+            return res.status(400).render('forgot', { message: "Please provide valid email and secret key." });
+        }
+        db.query('SELECT * from users WHERE email = ?', [email], async (error, results) => {
+            if (!results || !(await bcrypt.compare(secret, results[0].secret))) {
+                res.status(401).render('forgot', { message: 'Invalid Credentials' })
+            }
+            else {
+                res.status(200).render('forgot', { message: 'Your password has been successfully reset, check your mail' })
+                var mailOptions = {
+                    from: process.env.USER,
+                    to: email,
+                    subject: 'Password reset mail',
+                    text: 'Your new password is almighty'
+                };
+                transporter.sendMail(mailOptions, function (error, info) {
+                    if (error) {
+                        console.log(error);
+                    } else {
+                        let hashedPassword = bcrypt.hash(password, 8);
+                        db.query(`UPDATE users SET password = ? where email = ?`, [hashedPassword, email], async (error, results) => {
+                            console.log("Password reset sucessfully");
+                        });
+                        console.log('Email sent: ' + info.response);
+                    }
+                });
+            }
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+}
 exports.profile = (req, res) => {
     const id = req.body.id;
     console.log("The id is: " + id);
@@ -33,26 +79,6 @@ exports.update = async (req, res) => {
                     res.status(200).render('profile', { message: 'Your profile is being updated' })
                     res.send({ name: results[0].name, phone: results[0].contact, email: results[0].email });
                 });
-            }
-        });
-    }
-    catch (error) {
-        console.log(error);
-    }
-}
-
-exports.reset = async (req, res) => {
-    try {
-        const { email, secret } = req.body;
-        if (!email || !secret) {
-            return res.status(400).render('forgot', { message: "Please provide valid email and secret key." });
-        }
-        db.query('SELECT * from users WHERE email = ?', [email], async (error, results) => {
-            if (!results || !(await bcrypt.compare(secret, results[0].secret))) {
-                res.status(401).render('forgot', { message: 'Invalid Credentials' })
-            }
-            else {
-                res.status(200).render('forgot', { message: 'Your password has been successfully reset, check your mail' })
             }
         });
     }
@@ -124,7 +150,7 @@ exports.register = (req, res) => {
 
         let hashedPassword = await bcrypt.hash(password, 8);
         let hashedSecret = await bcrypt.hash(secret, 8);
-        console.log(hashedPassword);
+        //console.log(hashedPassword);
         db.query('INSERT into users  SET ?', { name: name, email: email, contact: contact, password: hashedPassword, secret: hashedSecret }, (error, results) => {
             if (error) {
                 console.log(error);

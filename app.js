@@ -4,6 +4,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 
+
+
 dotenv.config({ path: './.env' });
 const app = express();
 // const port= process.env.PORT || 5000;
@@ -28,15 +30,22 @@ app.use(cookieParser());
 
 app.set('view engine', 'hbs');
 
-db.connect((error) => {
-    if (error) {
-        console.log(error);
-    }
-    else {
+// db.connect((error) => {
+//     if (error) {
+//         console.log(error);
+//     }
+//     else {
+//         console.log("MySQL connection established");
+//     }
+// })
+try {
+    db.connect((error) => {
         console.log("MySQL connection established");
-    }
-})
-
+    });
+}
+catch (error) {
+    console.log("Error establishing connection" + error);
+}
 //Routes
 
 app.use('/', require('./routes/pages'));
@@ -44,5 +53,5 @@ app.use('/auth', require('./routes/auth'))
 
 
 app.listen(5000, () => {
-    console.log("Server listening on 5000");
+    console.log("Server listening on http://localhost:5000");
 });

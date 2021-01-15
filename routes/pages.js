@@ -22,4 +22,8 @@ router.get('/forgot', (req, res) => {
     res.render('forgot');
 });
 
+router.get('/reset', (req, res) => {
+    res.render('reset');
+});
+
 module.exports = router;
